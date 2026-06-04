@@ -3,16 +3,12 @@ MaskGuard AI — Real-time Mask Detection Frontend
 Single-file Streamlit app. Load model.pkl → preprocess → predict → render results.
 
 Preprocessing matches original notebook exactly:
-    cv2.resize(img, (128,128)) → /255 → np.reshape([1,128,128,3])
-    argmax == 1  →  With Mask   ✅
-    argmax == 0  →  Without Mask ❌
+    image.resize((128,128)) → convert('RGB') → np.array / 255.0 → expand_dims → (1,128,128,3)
 
-Fixes vs v1:
-  1. CLASS_NAMES order corrected to match notebook:
-       index 1 = With Mask, index 0 = Without Mask
-  2. Sidebar expander text overlap fixed (wildcard CSS removed)
-  3. Model loading: pickle → keras fallback
-  4. predict() verbose=0
+Model output is a SINGLE sigmoid neuron — shape (1,1), NOT (1,2):
+    prediction[0][0] < 0.6  →  With Mask    ✅
+    prediction[0][0] >= 0.6 →  Without Mask ❌
+    confidence = distance from the 0.6 threshold, expressed as %
 """
 
 from __future__ import annotations
@@ -28,13 +24,12 @@ import os
 # ─────────────────────────────────────────────
 # CONSTANTS
 # ─────────────────────────────────────────────
-dir = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH      = os.path.join(dir, "model.pkl")
-IMG_SIZE        = (128, 128)
-# Matches notebook exactly:  argmax==1 → With Mask,  argmax==0 → Without Mask
-CLASS_NAMES     = ["Without Mask", "With Mask"]
-CONFIDENCE_HIGH = 80.0
-CONFIDENCE_MID  = 50.0
+dir              = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH       = os.path.join(dir, "model.pkl")
+IMG_SIZE         = (128, 128)
+Not_MASK_THRESHOLD   = 0.5    
+CONFIDENCE_HIGH  = 80.0
+CONFIDENCE_MID   = 50.0
 
 
 # ─────────────────────────────────────────────
@@ -71,28 +66,27 @@ def load_model():
 # IMAGE PROCESSING
 # ─────────────────────────────────────────────
 def preprocess_image(image: Image.Image) -> np.ndarray:
-    """
-    Mirror the notebook pipeline exactly:
-        cv2.resize(img, (128,128)) -> /255 -> np.reshape([1,128,128,3])
-
-    The model was trained on cv2 BGR arrays, so we flip RGB->BGR to match.
-    """
-    img = image.convert("RGB")
-    img = img.resize(IMG_SIZE)                       # (128, 128)
-    arr = np.array(img, dtype=np.float32)            # (128, 128, 3) RGB
-    arr = arr[:, :, ::-1]                            # RGB -> BGR (match cv2.imread)
-    arr = arr / 255.0                                # scale to [0, 1]
-    return np.reshape(arr, [1, 128, 128, 3])         # -> (1, 128, 128, 3)
+    img = image.resize(IMG_SIZE)                        # (128, 128)
+    img = img.convert("RGB")                            # ensure 3 channels
+    arr = np.array(img, dtype=np.float32) / 255.0      # normalise to [0, 1]
+    return np.expand_dims(arr, axis=0)                  # → (1, 128, 128, 3)
 
 
 def predict(model, image: Image.Image) -> tuple[str, float]:
-    """Run inference; return (label, confidence_pct)."""
-    arr   = preprocess_image(image)
-    preds = model.predict(arr, verbose=0)            # verbose=0 = no progress bar
-    class_idx  = int(np.argmax(preds[0]))
-    confidence = float(np.max(preds[0])) * 100.0
-    label = CLASS_NAMES[class_idx]
-    return label, confidence
+    arr        = preprocess_image(image)
+    preds      = model.predict(arr, verbose=0)   # shape (1, 1)
+    raw        = float(preds[0][0])              # single sigmoid value in [0, 1]
+
+    if raw < Not_MASK_THRESHOLD:
+        label      = "With Mask"
+        # 0.0 → 100% confident mask, 0.599 → ~0% confident
+        confidence = (1.0 - raw / Not_MASK_THRESHOLD) * 100.0
+    else:
+        label      = "Without Mask"
+        # 0.5 → ~0% confident no-mask, 1.0 → 100% confident
+        confidence = ((raw - Not_MASK_THRESHOLD) / (1.0 - Not_MASK_THRESHOLD)) * 100.0
+
+    return label, round(confidence, 2)
 
 
 # ─────────────────────────────────────────────
@@ -615,12 +609,12 @@ def render_sidebar() -> None:
             <div class="info-pill">Format <b>Pickle</b></div>
             <div class="info-pill">Input <b>128 × 128</b></div>
             <div class="info-pill">Channels <b>RGB</b></div>
-            <div class="info-pill">Classes <b>2</b></div>
+            <div class="info-pill">Output <b>Sigmoid (1 neuron)</b></div>
             <div class="info-pill">Norm <b>÷ 255</b></div>
             </div>
-            <div style="font-size:0.82rem;color:#8888AA;margin-top:0.75rem;line-height:1.7;">
-                🔴 Class 0 → Without Mask<br>
-                🟢 Class 1 → With Mask
+            <div style="font-size:0.82rem;color:#8888AA;margin-top:0.75rem;line-height:1.9;">
+                🟢 value &lt; 0.6 → With Mask<br>
+                🔴 value ≥ 0.6 → Without Mask
             </div>
             """, unsafe_allow_html=True)
 
