@@ -45,20 +45,27 @@ def load_model():
     """
     Try plain pickle first.
     If the unpickled object lacks .predict(), attempt keras load as fallback.
+    Handles keras import inside try/except to support late binding.
     """
-    with open(MODEL_PATH, "rb") as f:
-        obj = pickle.load(f)
-
-    # If pickle gave us a real model, use it directly
-    if hasattr(obj, "predict"):
-        return obj
+    try:
+        with open(MODEL_PATH, "rb") as f:
+            obj = pickle.load(f)
+        
+        # If pickle gave us a real model, use it directly
+        if hasattr(obj, "predict"):
+            return obj
+    except ImportError:
+        # Keras not available during unpickling; try direct keras load
+        pass
+    except Exception as e:
+        st.warning(f"Pickle load failed: {e}. Attempting Keras load...")
 
     # Fallback: maybe the .pkl is actually a keras SavedModel path or bytes
     try:
         import tensorflow as tf
         model = tf.keras.models.load_model(MODEL_PATH)
         return model
-    except Exception:
+    except Exception as keras_err:
         pass
 
     raise RuntimeError(
