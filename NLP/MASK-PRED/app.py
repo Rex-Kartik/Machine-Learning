@@ -28,8 +28,8 @@ import os
 # ─────────────────────────────────────────────
 # CONSTANTS
 # ─────────────────────────────────────────────
-dir = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH      =  os.path.join(dir, "model.pkl")
+dir = os.path.dirname(os.path.abspath(__file__)
+MODEL_PATH      = os.path.join(dir, "model.pkl")
 IMG_SIZE        = (128, 128)
 # Matches notebook exactly:  argmax==1 → With Mask,  argmax==0 → Without Mask
 CLASS_NAMES     = ["Without Mask", "With Mask"]
@@ -45,27 +45,20 @@ def load_model():
     """
     Try plain pickle first.
     If the unpickled object lacks .predict(), attempt keras load as fallback.
-    Handles keras import inside try/except to support late binding.
     """
-    try:
-        with open(MODEL_PATH, "rb") as f:
-            obj = pickle.load(f)
-        
-        # If pickle gave us a real model, use it directly
-        if hasattr(obj, "predict"):
-            return obj
-    except ImportError:
-        # Keras not available during unpickling; try direct keras load
-        pass
-    except Exception as e:
-        st.warning(f"Pickle load failed: {e}. Attempting Keras load...")
+    with open(MODEL_PATH, "rb") as f:
+        obj = pickle.load(f)
+
+    # If pickle gave us a real model, use it directly
+    if hasattr(obj, "predict"):
+        return obj
 
     # Fallback: maybe the .pkl is actually a keras SavedModel path or bytes
     try:
         import tensorflow as tf
         model = tf.keras.models.load_model(MODEL_PATH)
         return model
-    except Exception as keras_err:
+    except Exception:
         pass
 
     raise RuntimeError(
@@ -714,12 +707,15 @@ if __name__ == "__main__":
 
 
 # ─────────────────────────────────────────────
-# requirements.txt
+# requirements.txt  (deploy-ready for Streamlit Cloud)
 # ─────────────────────────────────────────────
 # streamlit>=1.27.0
-# tensorflow>=2.12.0
+# tensorflow-cpu==2.15.1   ← NOT tensorflow; Cloud runs Python 3.11, TF has no py3.14 wheels
 # pillow>=10.0.0
-# numpy>=1.24.0
+# numpy>=1.24.0,<2.0.0     ← cap numpy<2 for TF 2.15 compatibility
+#
+# Also add runtime.txt to your repo root (or same folder as app.py):
+#   python-3.11
 #
 # pip install -r requirements.txt
 # streamlit run app.py
