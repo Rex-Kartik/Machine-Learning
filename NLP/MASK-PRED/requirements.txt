@@ -1,6 +1,4 @@
---prerelease=allow
---upgrade pip
-streamlit>=1.28.0
-tensorflow>=2.16.0
-pillow>=10.0.0
-numpy>=1.26.0
+streamlit
+tensorflow
+pillow
+numpy
