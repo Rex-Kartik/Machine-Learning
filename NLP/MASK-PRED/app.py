@@ -23,11 +23,13 @@ from io import BytesIO
 import numpy as np
 import streamlit as st
 from PIL import Image
+import os
 
 # ─────────────────────────────────────────────
 # CONSTANTS
 # ─────────────────────────────────────────────
-MODEL_PATH      = "model.pkl"
+dir = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH      =  os.path.join(dir, "model.pkl")
 IMG_SIZE        = (128, 128)
 # Matches notebook exactly:  argmax==1 → With Mask,  argmax==0 → Without Mask
 CLASS_NAMES     = ["Without Mask", "With Mask"]
