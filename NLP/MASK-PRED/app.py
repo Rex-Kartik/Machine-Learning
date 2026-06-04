@@ -28,7 +28,7 @@ import os
 # ─────────────────────────────────────────────
 # CONSTANTS
 # ─────────────────────────────────────────────
-dir = os.path.dirname(os.path.abspath(__file__)
+dir = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH      = os.path.join(dir, "model.pkl")
 IMG_SIZE        = (128, 128)
 # Matches notebook exactly:  argmax==1 → With Mask,  argmax==0 → Without Mask
