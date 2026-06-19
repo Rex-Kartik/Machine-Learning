@@ -11,11 +11,13 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 from PIL import Image
+import os
 
 # ─────────────────────────────────────────────
 # CONSTANTS
 # ─────────────────────────────────────────────
-MODEL_V4          = "fake_test_modelv4.keras"
+dir               = os.path.dirname(os.path.abspath(__file__))
+MODEL_V4          = os.path.join(dir, "fake_test_modelv4.keras")
 THRESHOLD         = 0.5
 MAX_BATCH         = 20
 SUPPORTED_FORMATS = ["jpg", "jpeg", "png", "webp"]
