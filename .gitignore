@@ -4,8 +4,8 @@ __pycache__/
 *.egg-info/
 dist/
 build/
-.venv/
-venv/
+.venv_311/
+venv_311/
 
 # IDEs
 .vscode/
